@@ -1,2 +1,0 @@
-# ML
-titanic task
