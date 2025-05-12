@@ -74,7 +74,7 @@ plt.show()
 
 
     
-![png](Titanic_files/Titanic_6_1.png)
+![png](README_files/README_6_1.png)
     
 
 
@@ -92,7 +92,7 @@ plt.show()
 
 
     
-![png](Titanic_files/Titanic_8_0.png)
+![png](README_files/README_8_0.png)
     
 
 
@@ -110,7 +110,7 @@ plt.show()
 
 
     
-![png](Titanic_files/Titanic_10_0.png)
+![png](README_files/README_10_0.png)
     
 
 
@@ -182,7 +182,7 @@ print(corr_with_target[1:11])  # Пропускаем сам Survived
 
 
     
-![png](Titanic_files/Titanic_17_0.png)
+![png](README_files/README_17_0.png)
     
 
 
@@ -230,7 +230,7 @@ plt.show()
 
 
     
-![png](Titanic_files/Titanic_19_0.png)
+![png](README_files/README_19_0.png)
     
 
 
@@ -268,7 +268,7 @@ plt.show()
 
 
     
-![png](Titanic_files/Titanic_21_0.png)
+![png](README_files/README_21_0.png)
     
 
 
@@ -411,6 +411,6 @@ plt.show()
 
 
     
-![png](Titanic_files/Titanic_26_1.png)
+![png](README_files/README_26_1.png)
     
 
