@@ -120,7 +120,6 @@ plt.show()
 
 
 ```python
-# Кодирование категориальных признаков
 from sklearn.preprocessing import LabelEncoder
 
 # Преобразование пола в числовой формат (0 - male, 1 - female)
@@ -165,7 +164,6 @@ df['FarePerPerson'] = df['Fare'] / df['FamilySize']
 
 
 ```python
-# Проверим корреляцию новых признаков с целевой переменной
 new_features = ['FamilySize', 'IsAlone', 'Title_encoded', 'AgeBin', 'IsChild', 'FareBin', 'FarePerPerson', 'Deck_encoded']
 numeric_df = df.select_dtypes(include=['number'])
 
@@ -174,10 +172,9 @@ sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", fmt=".2f")
 plt.title("Корреляция признаков после Feature Engineering")
 plt.show()
 
-# Посмотрим на самые важные корреляции с Survived
 corr_with_target = numeric_df.corr()['Survived'].sort_values(ascending=False)
 print("Корреляция признаков с целевой переменной Survived:")
-print(corr_with_target[1:11])  # Пропускаем сам Survived
+print(corr_with_target[1:11]) 
 ```
 
 
@@ -204,7 +201,6 @@ print(corr_with_target[1:11])  # Пропускаем сам Survived
 
 
 ```python
-# Визуализация влияния новых признаков
 plt.figure(figsize=(15, 10))
 
 plt.subplot(2, 2, 1)
@@ -238,7 +234,6 @@ plt.show()
 
 
 ```python
-# Выберем наиболее релевантные признаки для модели
 selected_features = [
     'Pclass',
     'Sex_encoded',
@@ -256,10 +251,8 @@ selected_features = [
     'Deck_encoded'
 ]
 
-# Создадим новый датафрейм с отобранными признаками
 df_engineered = df[selected_features + ['Survived']].copy()
 
-# Проверим финальную корреляцию
 plt.figure(figsize=(12,8))
 sns.heatmap(df_engineered.corr(), annot=True, cmap="coolwarm", fmt=".2f")
 plt.title("Корреляция отобранных признаков")
@@ -413,4 +406,205 @@ plt.show()
     
 ![png](README_files/README_26_1.png)
     
+
+
+### Градиентный бустинг
+
+
+```python
+import xgboost as xgb
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.model_selection import train_test_split
+
+# Используем уже подготовленные признаки
+X = df_engineered.drop('Survived', axis=1)
+y = df_engineered['Survived']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=42)
+
+model_xgb = xgb.XGBClassifier(eval_metric='logloss',random_state=42)
+model_xgb.fit(X_train, y_train)
+
+y_pred = model_xgb.predict(X_test)
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.3f}")
+print("Classification Report:\n", classification_report(y_test, y_pred))
+
+```
+
+    Accuracy: 0.810
+    Classification Report:
+                   precision    recall  f1-score   support
+    
+               0       0.83      0.86      0.85       110
+               1       0.77      0.72      0.75        69
+    
+        accuracy                           0.81       179
+       macro avg       0.80      0.79      0.80       179
+    weighted avg       0.81      0.81      0.81       179
+    
+
+
+### Нейронная сеть
+
+
+```python
+from sklearn.neural_network import MLPClassifier
+
+data = pd.read_csv("Titanic.csv")
+
+target = 'Survived'
+features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked']
+X = data[features]
+y = data[target]
+
+numeric_features = ['Age', 'SibSp', 'Parch', 'Fare']
+numeric_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy='median')),
+    ('scaler', StandardScaler())
+])
+
+categorical_features = ['Pclass', 'Sex', 'Embarked']
+categorical_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+preprocessor = ColumnTransformer([
+    ('num', numeric_pipeline, numeric_features),
+    ('cat', categorical_pipeline, categorical_features)
+])
+
+model_nn = Pipeline([
+    ('preprocessor', preprocessor),
+    ('classifier', MLPClassifier(
+        hidden_layer_sizes=(50, 30), 
+        activation='relu',
+        max_iter=500,
+        random_state=42,
+        early_stopping=True,
+        validation_fraction=0.1
+    ))
+])
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+model_nn.fit(X_train, y_train)
+y_pred = model_nn.predict(X_test)
+
+print(f'Neural Network Accuracy: {accuracy_score(y_test, y_pred):.3f}')
+print('Classification Report:\n', classification_report(y_test, y_pred))
+```
+
+    Neural Network Accuracy: 0.793
+    Classification Report:
+                   precision    recall  f1-score   support
+    
+               0       0.77      0.94      0.85       110
+               1       0.85      0.57      0.68        69
+    
+        accuracy                           0.79       179
+       macro avg       0.81      0.75      0.76       179
+    weighted avg       0.80      0.79      0.78       179
+    
+
+
+### Сравнение моделей
+
+
+```python
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
+
+models = {
+    'Logistic Regression': Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', LogisticRegression(max_iter=1000, random_state=42))
+    ]),
+    'Decision Tree': Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', DecisionTreeClassifier(random_state=42))
+    ]),
+    'XGBoost': Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', XGBClassifier(eval_metric='logloss', random_state=42))
+    ]),
+    'Neural Network': model_nn  
+}
+
+# Настройка кросс-валидации
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+results = {}
+
+# Выполнение кросс-валидации для всех моделей
+for name, model in models.items():
+    scores = cross_val_score(model, X, y, cv=cv, scoring='accuracy', n_jobs=-1)
+    results[name] = {
+        'mean_accuracy': np.mean(scores),
+        'std_accuracy': np.std(scores),
+        'all_scores': scores
+    }
+    print(f"{name}:")
+    print(f"  Средняя точность: {results[name]['mean_accuracy']:.3f} (±{results[name]['std_accuracy']:.3f})")
+    print(f"  Все результаты: {np.round(results[name]['all_scores'], 3)}\n")
+
+# Визуализация результатов
+plt.figure(figsize=(12, 6))
+x = np.arange(len(models))
+means = [results[name]['mean_accuracy'] for name in models]
+stds = [results[name]['std_accuracy'] for name in models]
+
+bars = plt.bar(x, means, yerr=stds, align='center', alpha=0.7, 
+               color=['#1f77b4', '#2ca02c', '#ff7f0e', '#d62728'], capsize=10)
+
+plt.xticks(x, models.keys())
+plt.ylabel('Accuracy')
+plt.title('Сравнение моделей с кросс-валидацией', pad=20)
+plt.ylim(0.7, 0.85)
+
+for bar, mean in zip(bars, means):
+    height = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2., height - 0.02,
+             f'{mean:.3f}',
+             ha='center', va='bottom',
+             color='white', fontweight='bold')
+
+plt.grid(axis='y', linestyle='--', alpha=0.5)
+plt.tight_layout()
+plt.show()
+
+# Определение лучшей модели
+best_model_name = max(results, key=lambda x: results[x]['mean_accuracy'])
+print(f"\nЛучшая модель: {best_model_name} (средняя точность: {results[best_model_name]['mean_accuracy']:.3f})")
+```
+
+    Logistic Regression:
+      Средняя точность: 0.797 (±0.015)
+      Все результаты: [0.782 0.803 0.798 0.781 0.82 ]
+    
+    Decision Tree:
+      Средняя точность: 0.784 (±0.024)
+      Все результаты: [0.804 0.809 0.747 0.764 0.798]
+    
+    XGBoost:
+      Средняя точность: 0.814 (±0.025)
+      Все результаты: [0.832 0.809 0.77  0.815 0.843]
+    
+    Neural Network:
+      Средняя точность: 0.799 (±0.014)
+      Все результаты: [0.782 0.787 0.803 0.82  0.803]
+    
+
+
+
+    
+![png](README_files/README_32_1.png)
+    
+
+
+    
+    Лучшая модель: XGBoost (средняя точность: 0.814)
 
